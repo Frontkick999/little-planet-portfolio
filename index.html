@@ -3,10 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>little-planet-portfolio</title>
+    <style>
+      body { margin: 0; overflow: hidden; }
+      #joystick-zone {
+        position: absolute;
+        bottom: 40px;
+        left: 40px;
+        width: 120px;
+        height: 120px;
+        z-index: 100;
+        /* Evita che il joystick catturi i click se non siamo su mobile o se non lo tocchiamo */
+        pointer-events: auto; 
+      }
+    </style>
   </head>
   <body>
+    <div id="joystick-zone"></div>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

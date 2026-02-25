@@ -62,27 +62,47 @@ export default class Player {
         if (!this.mesh) return 
 
         const { forward, backward, left, right } = this.controls.keys
+        const joy = this.controls.joystickInput
         const oldPosition = this.container.position.clone()
 
-        // --- ROTAZIONE ORIGINALE (TUO FEELING) ---
-        if (left) this.mesh.rotation.y += this.rotationSpeed
-        if (right) this.mesh.rotation.y -= this.rotationSpeed
+        // --- 1. ROTAZIONE (TASTIERA + JOYSTICK) ---
+        let rotationAmount = 0
+        if (left) rotationAmount += this.rotationSpeed
+        if (right) rotationAmount -= this.rotationSpeed
+        
+        // Se il joystick è attivo, usiamo l'asse X per ruotare
+        if (joy.active) {
+            rotationAmount = -joy.x * this.rotationSpeed * 1.5
+        }
+        this.mesh.rotation.y += rotationAmount
 
-        // --- MOVIMENTO ORIGINALE (TUO FEELING) ---
-        if (forward || backward) {
+        // --- 2. MOVIMENTO (TASTIERA + JOYSTICK) ---
+        // Calcoliamo l'intensità: 1 (avanti), -1 (indietro) o valore analogico del joystick
+        let moveIntensity = 0
+        if (forward) moveIntensity = 1
+        else if (backward) moveIntensity = -1
+        else if (joy.active) moveIntensity = joy.y // y è già invertito in Controls.js
+
+        // Se c'è input (usiamo una piccola deadzone di 0.1)
+        if (Math.abs(moveIntensity) > 0.1) {
             const up = this.container.position.clone().normalize()
-            const direction = new THREE.Vector3(0, 0, forward ? 1 : -1)
+            
+            // Direzione basata sul segno dell'intensità
+            const direction = new THREE.Vector3(0, 0, moveIntensity > 0 ? 1 : -1)
             
             direction.applyQuaternion(this.mesh.quaternion)
             direction.applyQuaternion(this.container.quaternion)
 
             const axis = new THREE.Vector3().crossVectors(up, direction).normalize()
-            const angle = this.moveSpeed / this.planetRadius
+            
+            // La velocità effettiva dipende da quanto si spinge il joystick
+            const currentMoveSpeed = this.moveSpeed * Math.abs(moveIntensity)
+            const angle = currentMoveSpeed / this.planetRadius
             const movementQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle)
             
             this.container.position.applyQuaternion(movementQuaternion)
 
-            // CONTROLLO COLLISIONI
+            // --- CONTROLLO COLLISIONI ---
             let collisionDetected = false
             const obstacles = this.experience.environment.objectsToCollide
             
@@ -101,9 +121,12 @@ export default class Player {
             }
         }
 
+        // --- 3. ALLINEAMENTO E NORMALIZZAZIONE ---
         const up = this.container.position.clone().normalize()
         const targetQuaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), up)
         this.container.quaternion.slerp(targetQuaternion, 0.1) 
+        
+        // Manteniamo il player appiccicato alla sfera
         this.container.position.normalize().multiplyScalar(this.planetRadius + this.heightAboveGround)
     }
 
@@ -119,7 +142,6 @@ export default class Player {
         const material = new THREE.SpriteMaterial({ map: texture, transparent: true })
         this.emojiSprite = new THREE.Sprite(material)
 
-        // --- EMOJI ALTA ---
         this.emojiSprite.position.y = 1.3 
         this.emojiSprite.scale.set(0.4, 0.4, 0.4) 
 
